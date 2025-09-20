@@ -5,6 +5,9 @@ import random
 import pygame as pg
 from creature import Creature
 from bush import Bush
+from statTracker import StatTracker
+import pandas as pd
+import matplotlib.pyplot as plt
 
 
 # ---Configuration---
@@ -25,18 +28,32 @@ creatureNames = [
     "Zombie",
 ]
 
-# ---Evolution Simulation---
-def evolution_simulation(env, creatures, bushes):
-    while True:
-        for creature in creatures:
-            creature.moveRandom()
-            # Ensure creatures stay within bounds
-            creature.x = max(0, min(WIDTH, creature.x))
-            creature.y = max(0, min(HEIGHT, creature.y))
-        yield env.timeout(1) # Advance simulation time by 1 unit
+def export_stats_to_excel(stats_tracker):
+    df = pd.DataFrame(stats_tracker.history)
+    df.to_excel("CreatureSim_Stats.xlsx", index=False)
+    
+def plot_stats(stats_tracker):
+    df = pd.DataFrame(stats_tracker.history)
+    if df.empty:
+        print("No data to plot.")
+        return
+    plt.plot(df["second"], df["avg_speed"], label="Avg Speed")
+    plt.plot(df["second"], df["avg_size"], label="Avg Size")
+    plt.plot(df["second"], df["avg_energy"], label="Avg Energy")
+    plt.legend()
+    plt.xlabel("Time (seconds)")
+    plt.ylabel("Average Value")
+    plt.title("Creature Simulation Stats Over Time")
+    plt.show()
+
+# # ---Evolution Simulation---
+# def evolution_simulation(env, creatures, bushes):
+#     while True:
+            
+#         yield env.timeout(1) # Advance simulation time by 1 unit
         
 # ---Pygame Visualization---
-def draw_population(screen, creatures, bushes):
+def draw_population(screen, creatures, bushes, font):
     screen.fill((34, 139, 82))
     x, y = 400, 300
     points = [
@@ -58,11 +75,22 @@ def draw_population(screen, creatures, bushes):
         bush.draw_bush(screen, bush.x, bush.y)
     for creature in creatures:
         pg.draw.circle(screen, creature.color, (int(creature.x), int(creature.y)), int(creature.size / 10))
+        stats_text = f"E:{creature.energy} H:{creature.hunger} T:{creature.thirst}"
+        text_surface = font.render(stats_text, True, (255, 255, 255))
+        
+        text_x = int(creature.x) - text_surface.get_width() // 2
+        text_y = int(creature.y) - int(creature.size / 10) + 12
+        screen.blit(text_surface, (text_x, text_y))
 
     pg.display.flip()
     
 def main():
     pg.init()
+    pg.font.init()
+    stats_tracker = StatTracker()
+    tick_count = 0
+    font = pg.font.SysFont(None, 16)
+    
     screen = pg.display.set_mode((WIDTH, HEIGHT))
     clock = pg.time.Clock()
     env = simpy.Environment()
@@ -70,12 +98,17 @@ def main():
                           env=env,
                           x=random.randint(0, WIDTH),
                           y=random.randint(0, HEIGHT),
-                          color=(random.randint(0,255), random.randint(0,255), random.randint(0,255)),
+                          color=(255, 0, 0),
                           diet=random.choice(["herbivore", "carnivore", "omnivore"]))
-                 for _ in range(max_creatures - 5)]
+                 for _ in range(2)]
     bushes = [Bush(x=random.randint(0, WIDTH),
                    y=random.randint(0, HEIGHT)) for _ in range(max_bushes - 5)]
-    env.process(evolution_simulation(env, creatures, bushes))
+    for creature in creatures:
+        env.process(creature.drain_vitals(env))
+        env.process(creature.behavior_loop(env, bushes, water_sources=[]))
+        
+    
+    # env.process(evolution_simulation(env, creatures, bushes))
     
     running = True
     while running:
@@ -92,15 +125,22 @@ def main():
                                                   y=y,
                                                   color=(random.randint(0,255), random.randint(0,255), random.randint(0,255)),
                                                   diet=random.choice(["herbivore", "carnivore", "omnivore"])))
+                        env.process(creatures[-1].drain_vitals(env))
+                        env.process(creatures[-1].behavior_loop(env, bushes, water_sources=[]))
                 elif event.button == 3:  # Right click to add bush
                     if len(bushes) < max_bushes:
                         x, y = event.pos
                         bushes.append(Bush(x, y))
                         
-        draw_population(screen, creatures, bushes)
+        draw_population(screen, creatures, bushes, font)
+        tick_count += 1
+        if (tick_count % 60 == 0): # Every second at 60 fps
+            stats_tracker.record(creatures, tick_count // 60)
         env.step()
         clock.tick(60)  # Limit to 60 FPS
     pg.quit()
+    export_stats_to_excel(stats_tracker)
+    plot_stats(stats_tracker)
     
 if __name__ == "__main__":
     main()

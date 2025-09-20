@@ -14,6 +14,8 @@ mutatableStats = [
     "diet",
 ]
 mutation_rate = 0.25
+hunger_threshold = 30
+thirst_threshold = 30
 
 class Creature:
     def __init__(self, name, env, x, y, 
@@ -44,6 +46,8 @@ class Creature:
             self.speed = float(self.speed)
         except Exception:
             self.speed = 1.0
+            
+            
     def moveRandom(self):
         """Apply a small random acceleration, damp velocity, and update position.
 
@@ -72,3 +76,49 @@ class Creature:
         self.x += self.vx
         self.y += self.vy
         
+        
+    def stopMoving(self):
+        """Stop the creature's movement by setting velocity to zero."""
+        self.vx = 0.0
+        self.vy = 0.0
+        
+        
+    def drain_vitals(self, env):
+        while True:
+            yield env.timeout(15) # divide by 60 to get how fast the stats drain in seconds (30 / 60 = 0.5 seconds to drain 1 point)
+            self.energy -= 1
+            self.thirst -= 1
+            self.hunger -= 1
+            
+    
+    def behavior_loop(self, env, bushes, water_sources):
+        while True:
+            if self.thirst < thirst_threshold:
+                self.seek_water(water_sources)
+            elif self.hunger < hunger_threshold:
+                self.seek_food(bushes)
+            elif self.energy >= 90:
+                self.moveRandom()
+            else:
+                self.stopMoving()
+                
+            self.x = max(0, min(800, self.x))
+            self.y = max(0, min(600, self.y))
+            
+            yield env.timeout(1)  # Advance simulation time by 1 unit
+            
+    def seek_water(self, water_sources):
+        pass  # Placeholder for water-seeking behavior
+    def seek_food(self, bushes):
+        pass  # Placeholder for food-seeking behavior
+    def reproduce(self, env):
+        pass  # Placeholder for reproduction behavior
+    def mutate(self):
+        pass  # Placeholder for mutation behavior
+    def draw(self, screen):
+        pass  # Placeholder for drawing the creature on screen
+    def eat(self, bush):
+        pass  # Placeholder for eating behavior
+    def drink(self, water_source):
+        pass  # Placeholder for drinking behavior
+    

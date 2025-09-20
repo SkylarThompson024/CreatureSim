@@ -1,2 +1,4 @@
 1. Move creatrue drawing to creature class
-    1.A. Draw creatrue features based on creatures stats(size, diet, color, etc)
+    1.A. Draw creatrue features based on creatures stats(size, diet, color, statTracker, etc)
+2. Update evolution_simulation() to simulate stat draining(energy, hunger, thrist, etc)
+3. 
