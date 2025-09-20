@@ -9,11 +9,20 @@ class StatTracker:
     def record(self, creatures, second):
         if not creatures:
             return
-        avg_speed = sum(c.speed for c in creatures) / len(creatures)
-        avg_size = sum(c.size for c in creatures) / len(creatures)
-        avg_energy = sum(c.energy for c in creatures) / len(creatures)
-        avg_hunger = sum(c.hunger for c in creatures) / len(creatures)
-        avg_thirst = sum(c.thirst for c in creatures) / len(creatures)
+        # Single pass aggregation to reduce multiple O(n) passes
+        total_speed = total_size = total_energy = total_hunger = total_thirst = 0.0
+        n = len(creatures)
+        for c in creatures:
+            total_speed += c.speed
+            total_size += c.size
+            total_energy += c.energy
+            total_hunger += c.hunger
+            total_thirst += c.thirst
+        avg_speed = total_speed / n
+        avg_size = total_size / n
+        avg_energy = total_energy / n
+        avg_hunger = total_hunger / n
+        avg_thirst = total_thirst / n
         
         self.history.append({
             "second": second,

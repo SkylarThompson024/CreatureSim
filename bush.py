@@ -10,11 +10,20 @@ GREEN = (34, 139, 34)
 WATER_BLUE = (0, 191, 255)
 
 class Bush:
-    def __init__(self, x = random.randint(0, 800), y = random.randint(0, 600), berryAmount=5, regrowRate=0.1):
+    def __init__(self, x = random.randint(0, 800), y = random.randint(0, 600), berryAmount=3, regrowRate=0.5):
         self.x = x
         self.y = y
         self.berryAmount = berryAmount
         self.regrowRate = regrowRate
+        # reservation list so creatures can reserve berries to avoid over-targeting
+        self.reserved_by = []
+    
+    def has_berries(self):
+        return self.berryAmount > 0
+    def pick_berry(self):
+        if self.has_berries():
+            self.berryAmount -= 1
+            
         
     def draw_bush(self, screen, x, y):
         points = [
@@ -26,22 +35,22 @@ class Bush:
             (x + 4, y + 4),
             (x - 4, y + 4)
         ]
-        if 0 <= x <= screen.get_width() and 0 <= y <= screen.get_height():
-            pixel_color = screen.get_at((x, y))[:3]  # Get RGB color at bush position
-            if pixel_color == WATER_BLUE:
-                self.draw_bush(screen, x, y + 1)  # Draw bush slightly lower if on water
-            else: 
-                pg.draw.polygon(screen, DARK_GREEN, points)  # Draw bush body
-                #Overlay circles to simulate berries
-                pg.draw.circle(screen, (255, 0, 0), (x + 4, y - 2), 1)  # Draw a berry
-                pg.draw.circle(screen, (255, 0, 0), (x - 4, y), 1)  # Draw a berry
-                pg.draw.circle(screen, (255, 0, 0), (x + 1, y + 2), 1)  # Draw a berry
-        else:
-            self.draw_bush(screen, random.randint(0, screen.get_width()), random.randint(0, screen.get_height()))
+        sw, sh = screen.get_width(), screen.get_height()
+        # quick off-screen cull
+        if not (0 <= x <= sw and 0 <= y <= sh):
+            return
+
+        # Avoid calling get_at (slow). Instead, draw bush normally.
+        pg.draw.polygon(screen, DARK_GREEN, points)  # Draw bush body
+        # Draw berries (small cost) only when present
+        if self.berryAmount > 0:
+            berry_positions = [(x + 4, y - 2), (x - 4, y), (x + 1, y + 2)]
+            for i in range(min(self.berryAmount, len(berry_positions))):
+                pg.draw.circle(screen, (255, 0, 0), berry_positions[i], 1)
         
         
         
     def regrow(self):
-        if (self.appleAmount < 5):
-            self.appleAmount += 1
+        if (self.berryAmount < 3):
+            self.berryAmount += 1
         
